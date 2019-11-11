@@ -1,30 +1,13 @@
 import React, { useState, useRef, Fragment } from "react"
 import * as tf from "@tensorflow/tfjs"
-import { getImageOrientation, adjustCanvas } from "../utils/imageAdjustment"
+import { getImageOrientation, adjustCanvas, argMax } from "../utils"
 import ProgressBar from "../components/ProgressBar"
 import LoadingSpinner from "../components/LoadingSpinner"
 import sampleFishPhoto from "../images/sample-aquarium.jpeg"
+import { ML_STATUSES, DETECTION_MODEL_URL, CLASSIFICATION_MODEL_URL  } from '../constants'
 import "../styles.scss"
 
-const STATUSES = {
-  INITIAL: 'INITIAL',
-  READY: 'READY',
-  WARMING_UP: 'WARMING_UP',
-  DETECTING: 'DETECTING',
-  CLASSIFYING: 'CLASSIFYING',
-  FAILURE: 'FAILURE',
-  SUCCESS: 'SUCCESS',
-}
-
-const argMax = array => 
-  Array.from(array).map((x, i) => [x, i]).reduce((r, a) => (a[0] > r[0] ? a : r))[1];
-
 const classificationLabels = ["fish", "shark", "ray"]
-
-const DETECTION_MODEL_URL =
-  "https://jk-fish-test.s3.us-east-2.amazonaws.com/fish_mobilenet2/model.json"
-const CLASSIFICATION_MODEL_URL =
-  "https://jk-fish-test.s3.us-east-2.amazonaws.com/test_fish_classifier/model.json"
 
 const RockfishDemo = () => {
   const [modelsLoaded, setModelsLoaded] = useState(false)
@@ -39,17 +22,13 @@ const RockfishDemo = () => {
   const downloadProgress =
     0.6 * detectionDownloadProgress + 0.4 * classificationDownloadProgress
 
-  const [isDetectionComplete, setIsDetectionComplete] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [loadingMessage, setLoadingMessage] = useState(null)
   const [hiddenSrc, setHiddenSrc] = useState(null)
   const [resizedSrc, setResizedSrc] = useState(null)
-  const [fail, setFail] = useState(false)
-  const [resized, setResized] = useState(false)
+  const [error, setError] = useState(false)
+  const [status, setStatus] = useState(ML_STATUSES.INITIAL)
+  const [isImageReady, setIsImageReady] = useState(false)
   const [orientation, setOrientation] = useState(0)
-  const [divWidth, setDivWith] = useState("auto")
-  const [divHeight, setDivHeight] = useState("auto")
-  const [status, setStatus] = useState(STATUSES.INITIAL)
+  const [dimensions, setDimensions] = useState({})
   const inputRef = useRef()
   const hiddenRef = useRef()
   const resizedRef = useRef()
@@ -144,8 +123,7 @@ const RockfishDemo = () => {
   }
 
   const warmUpModels = async (detector, classifier) => {
-    setIsLoading(true)
-    setLoadingMessage('Warming up...')
+    setStatus(ML_STATUSES.WARMING_UP)
     try {
       const warmupResult = await detector.executeAsync(
         tf.zeros([1, 300, 300, 3])
@@ -153,8 +131,7 @@ const RockfishDemo = () => {
     } catch (err) {
       console.log("ERROR ON TEST RUN", err)
     }
-    setIsLoading((false))
-    setLoadingMessage(null);
+    setStatus(ML_STATUSES.READY_FOR_DETECTION)
   }
 
   const loadModels = async () => {
@@ -175,14 +152,11 @@ const RockfishDemo = () => {
   const detect = async () => {
     const { current: img } = rotationCanvasRef
     let predictionFailed = false
-    setIsLoading(true)
-    setLoadingMessage('Detecting...')
-    console.log('WHY')
+    setStatus(ML_STATUSES.DETECTING)
     try {
       const tfImg = tf.browser.fromPixels(img).toFloat()
       const expanded = tfImg.expandDims(0)
       const res = await detectionModel.executeAsync(expanded)
-      console.log('RES', res)
       const detection_boxes = res[2]
       const arr = await detection_boxes.array()
       const tensors = await Promise.all(
@@ -192,13 +166,10 @@ const RockfishDemo = () => {
       )
       formatDetectionOutput(tensors)
     } catch (err) {
-      console.log('ERROR DETECTING', err)
       predictionFailed = true
     }
-    setIsDetectionComplete(true)
-    setIsLoading(false)
-    setLoadingMessage(null)
-    setFail(predictionFailed)
+    setStatus(ML_STATUSES.CLASSIFYING)
+    setError(predictionFailed)
   }
 
   const handleLoad = () => {
@@ -214,8 +185,6 @@ const RockfishDemo = () => {
 
   const classify = async canvases =>
     Promise.all(canvases.map(async canvas => {
-      console.log("RUNNING CLASSIFICATION")
-      
       const tfImg = tf.browser.fromPixels(canvas).toFloat()
       let input = tf.image.resizeBilinear(tfImg, [224, 224])
       const offset = tf.scalar(127.5)
@@ -227,8 +196,6 @@ const RockfishDemo = () => {
       const ok = await results.buffer()
       return ok.values;
     }));
-
-
 
   const resize = () => {
     const { innerWidth: maxWidth } = window
@@ -244,10 +211,10 @@ const RockfishDemo = () => {
     }
     canvas.width = width
     canvas.height = height
-    setDivWith(width)
-    setDivHeight(height)
+    setDimensions({ width, height })
     ctx.drawImage(img, 0, 0, width, height)
-    setResized(true)
+    setStatus(ML_STATUSES.READY_FOR_DETECTION)
+    setIsImageReady(true)
   }
 
   const handleChange = event => {
@@ -267,8 +234,7 @@ const RockfishDemo = () => {
 
   const reset = e => {
     e.stopPropagation()
-    setIsDetectionComplete(false)
-    setResized(false)
+    setStatus(ML_STATUSES.READY_FOR_DETECTION)
     setResizedSrc(null)
   }
 
@@ -279,13 +245,14 @@ const RockfishDemo = () => {
   const hidden = {
     display: "none",
   }
+
   const showProgress = downloadProgress !== 0 && downloadProgress !== 1
-  const controlActiveClass = resized ? "control--active" : ""
-  
+  const showSpinner = status === ML_STATUSES.WARMING_UP || status === ML_STATUSES.DETECTING
+
   return (
     <div
       className="wrapper"
-      style={resized ? { width: divWidth, height: divHeight } : {}}
+      style={isImageReady ? { ...dimensions } : {}}
     >
       <img
         id="hidden-upload-placeholder"
@@ -304,19 +271,20 @@ const RockfishDemo = () => {
       <canvas ref={hiddenCanvasRef} id="hidden-canvas" style={hidden} />
       <canvas
         ref={rotationCanvasRef}
-        style={resized ? {} : hidden}
+        style={isImageReady ? {} : hidden}
         id="adjusted-image"
       />
-      {resized && <div className="overlay" />}
+      {isImageReady && <div className="overlay" />}
 
-      <div className={`control ${controlActiveClass}`}>
-          {modelsLoaded && resized && !isLoading && !isDetectionComplete && (
+      <div className="control">
+          {status === ML_STATUSES.READY_FOR_DETECTION && isImageReady && (
             <button onClick={detect} className="control__button">
               Find Fish
             </button>
           )}
-          {isLoading && <LoadingSpinner />}
-          {isLoading && loadingMessage && <div>{loadingMessage}</div>}
+          {showSpinner && <LoadingSpinner />}
+          {status === ML_STATUSES.WARMING_UP && <div>Warming up...</div>}
+          {status === ML_STATUSES.DETECTING && <div>Detecting...</div>}
           {!modelsLoaded && (
             <button onClick={loadModels} className="control__button">
               Load Model
@@ -324,7 +292,7 @@ const RockfishDemo = () => {
           )}
           {showProgress && <ProgressBar progress={downloadProgress} />}
 
-          {modelsLoaded && !isLoading && !isDetectionComplete && !resized && (
+          {!isImageReady && status === ML_STATUSES.READY_FOR_DETECTION && (
             <Fragment>
               <button
                 href="#"
@@ -344,9 +312,9 @@ const RockfishDemo = () => {
               </button>
             </Fragment>
           )}
-          { isDetectionComplete && fail && <div>Failed to Find Fish <br /></div>}
+          {status === ML_STATUSES.COMPLETE && error && <div>Failed to Find Fish <br /></div>}
           
-          {isDetectionComplete && (
+          {status === ML_STATUSES.COMPLETE && (
             <button onClick={reset} className="control__button">
               Reset
             </button>
