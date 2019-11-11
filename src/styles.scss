@@ -1,0 +1,121 @@
+$color-border: rgba(74, 206, 255, 0.38);
+$color-text: rgb(156, 228, 255);
+
+body {
+  margin: 0;
+  font-family: "Montserrat", sans-serif;
+  font-weight: lighter;
+  background: black;
+  color: white;
+}
+
+.wrapper {
+  position: relative;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.overlay {
+  // background: #00000040;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  top: 0;
+}
+
+.control {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0px auto;
+  top: 100px;
+  background: #00000094;
+  width: 200px;
+}
+
+.control__button {
+  margin: 10px 0;
+  color: $color-text;
+  background: black;
+  border: solid 1px $color-border;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.control__input {
+  display: none;
+}
+
+.cropped {
+  top: 0;
+}
+
+.drag-box {
+  border: solid 1px $color-border;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  background: #00000094;
+  flex-direction: column;
+  color: $color-text;
+}
+
+
+.reset_box {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  right: 0px;
+}
+
+.progress-bar {
+  position: relative;
+  height: 20px;
+  width: 175px;
+  background: #e3f2fd;
+}
+
+.progress-bar__filler {
+  background: #2196f3;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.2s ease-in;
+}
+
+.progress-bar__button {
+  margin-right: 10px;
+  padding: 7px 12px;
+  font-size: 14px;
+  background: #d14836;
+  color: white;
+  font-family: "Montserrat", sans-serif;
+  cursor: pointer;
+  outline: 0;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: rgb(156, 228, 255);
+  animation: spin 1s ease-in-out infinite;
+  -webkit-animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    -webkit-transform: rotate(360deg);
+  }
+}
+
+@-webkit-keyframes spin {
+  to {
+    -webkit-transform: rotate(360deg);
+  }
+}
