@@ -37,7 +37,7 @@ export const getImageOrientation = (file, callback) => {
   reader.readAsArrayBuffer(file)
 }
 
-export const adjustCanvas = (ctx, width, height, orientation) => {
+export const adjustCanvas = (canvas, ctx, width, height, orientation) => {
     // set proper canvas dimensions before transform & export
     if (4 < orientation && orientation < 9) {
       canvas.width = height

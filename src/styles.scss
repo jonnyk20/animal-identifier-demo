@@ -35,6 +35,7 @@ body {
   top: 100px;
   background: #00000094;
   width: 200px;
+  padding: 10px;
 }
 
 .control__button {
@@ -54,14 +55,16 @@ body {
   top: 0;
 }
 
-.drag-box {
-  border: solid 1px $color-border;
-  display: flex !important;
-  align-items: center;
+.bounging-box {
+  border: solid 3px white;
+  position: absolute;
+  display: flex;
+  font-weight: bold;
+  background: #00000070;
+  font-size: 24px;
+  padding: 10px;
   justify-content: center;
-  background: #00000094;
-  flex-direction: column;
-  color: $color-text;
+  align-items: center;
 }
 
 
@@ -106,6 +109,7 @@ body {
   border-top-color: rgb(156, 228, 255);
   animation: spin 1s ease-in-out infinite;
   -webkit-animation: spin 1s ease-in-out infinite;
+  margin-bottom: 10px;
 }
 
 @keyframes spin {

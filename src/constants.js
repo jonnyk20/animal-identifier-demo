@@ -11,6 +11,8 @@ export const ML_STATUSES = {
 export const DETECTION_MODEL_URL =
   "https://jk-fish-test.s3.us-east-2.amazonaws.com/fish_mobilenet2/model.json"
 
+// export const CLASSIFICATION_MODEL_URL =
+//   "https://jk-fish-test.s3.us-east-2.amazonaws.com/test_fish_classifier/model.json"
 export const CLASSIFICATION_MODEL_URL =
-  "https://jk-fish-test.s3.us-east-2.amazonaws.com/test_fish_classifier/model.json"
+  "https://jk-fish-test.s3.us-east-2.amazonaws.com/3-rockfish-demo/model.json"
 

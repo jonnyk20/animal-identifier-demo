@@ -3,16 +3,18 @@ import * as tf from "@tensorflow/tfjs"
 import { getImageOrientation, adjustCanvas, argMax } from "../utils"
 import ProgressBar from "../components/ProgressBar"
 import LoadingSpinner from "../components/LoadingSpinner"
+import Boxes from "../components/Boxes"
 import sampleFishPhoto from "../images/sample-aquarium.jpeg"
 import { ML_STATUSES, DETECTION_MODEL_URL, CLASSIFICATION_MODEL_URL  } from '../constants'
 import "../styles.scss"
 
-const classificationLabels = ["fish", "shark", "ray"]
+const classificationLabels = ["canary rockfish", "vermillion rockfish", "yelloweye rockfish"];
 
 const RockfishDemo = () => {
   const [modelsLoaded, setModelsLoaded] = useState(false)
   const [classificationModel, setClassificationModel] = useState(null)
   const [detectionModel, setDetectionModel] = useState(null)
+  const [classifiedBoxes, setClassifiedBoxes] = useState([])
 
   const [
     classificationDownloadProgress,
@@ -36,15 +38,26 @@ const RockfishDemo = () => {
   const hiddenCanvasRef = useRef()
   const cropRef = useRef()
 
+  const formatScore = score => 
+    (score * 100).toFixed(2)
+
+
   const classifyDetections = (boxes, classifications) => {
-    const canvas = rotationCanvasRef.current;
-    const ctx = canvas.getContext("2d")
-    boxes.forEach((box, i) => {
-      const classificationLabelIndex = argMax(classifications[i]);
-      const classificationLabel = classificationLabels[classificationLabelIndex];
-      const { x, y } = box;
-      ctx.fillText(classificationLabel, x + 20, y + 20)
-    })
+    console.log('CLASSIFICATIONS', classifications)
+    const classifiedBoxes = 
+      boxes.map((box, i) => {
+        const classificationLabelIndex = argMax(classifications[i]);
+        const score = classifications[i][classificationLabelIndex];
+        const label = classificationLabels[classificationLabelIndex];
+        console.log('BOX', box);
+
+        return ({
+          ...box,
+          label,
+          score: formatScore(score),
+        })
+      })
+    setClassifiedBoxes(classifiedBoxes);
   }
 
   const cropDetections = async boxes => {
@@ -68,15 +81,14 @@ const RockfishDemo = () => {
       canvases.push(canvas);
     })
     const classifications = await classify(canvases);
+    setStatus(ML_STATUSES.COMPLETE);
     classifyDetections(boxes, classifications);
   }
 
-  const renderDetections = boxes => {
+  const drawBoxes = boxes => {
     const { current: img } = rotationCanvasRef
     const { width: imgW, height: imgH } = img
-    const newPredictions = []
-    const canvas = rotationCanvasRef.current;
-    const ctx = canvas.getContext("2d")
+    const formattedBoxes = []
     boxes.forEach((topBox, index) => {
       const topLeft = [topBox[1] * imgW, topBox[0] * imgH]
       const bottomRight = [topBox[3] * imgW, topBox[2] * imgH]
@@ -84,21 +96,16 @@ const RockfishDemo = () => {
       const boxH = bottomRight[1] - topLeft[1]
       const boxX = topLeft[0]
       const boxY = topLeft[1]
-      const newPrediction = {
+      const formattedBox = {
         index,
         x: boxX,
         y: boxY,
         w: boxW,
         h: boxH,
       }
-      newPredictions.push(newPrediction)
-      ctx.lineWidth = 2
-      ctx.fillStyle = "green"
-      ctx.strokeStyle = "green"
-      ctx.rect(boxX, boxY, boxW, boxH)
+      formattedBoxes.push(formattedBox)
     })
-    ctx.stroke()
-    cropDetections(newPredictions)
+    cropDetections(formattedBoxes)
   }
 
   const formatDetectionOutput = tensors => {
@@ -115,11 +122,11 @@ const RockfishDemo = () => {
     for (let i = 0; i < num_detections.values[0]; i++) {
       const n = i * 4
       const box = detection_boxes.values.slice(n, n + 4)
-      if (detection_scores.values[i] > 0.1) {
+      if (detection_scores.values[i] > 0.4) {
         boxes.push(box)
       }
     }
-    renderDetections(boxes)
+    drawBoxes(boxes)
   }
 
   const warmUpModels = async (detector, classifier) => {
@@ -156,9 +163,10 @@ const RockfishDemo = () => {
     try {
       const tfImg = tf.browser.fromPixels(img).toFloat()
       const expanded = tfImg.expandDims(0)
+      setStatus(ML_STATUSES.CLASSIFYING)
       const res = await detectionModel.executeAsync(expanded)
       const detection_boxes = res[2]
-      const arr = await detection_boxes.array()
+      // const arr = await detection_boxes.array()
       const tensors = await Promise.all(
         res.map(async (ts, i) => {
           return await ts.buffer()
@@ -168,7 +176,6 @@ const RockfishDemo = () => {
     } catch (err) {
       predictionFailed = true
     }
-    setStatus(ML_STATUSES.CLASSIFYING)
     setError(predictionFailed)
   }
 
@@ -178,23 +185,32 @@ const RockfishDemo = () => {
       height = img.height
     const { current: canvas } = hiddenCanvasRef
     const ctx = canvas.getContext("2d")
-    adjustCanvas(ctx, width, height, orientation)
+    adjustCanvas(canvas, ctx, width, height, orientation)
     ctx.drawImage(img, 0, 0)
     setResizedSrc(canvas.toDataURL())
   }
 
   const classify = async canvases =>
     Promise.all(canvases.map(async canvas => {
-      const tfImg = tf.browser.fromPixels(canvas).toFloat()
-      let input = tf.image.resizeBilinear(tfImg, [224, 224])
-      const offset = tf.scalar(127.5)
+      // convert element to tensor
+      const tensorInput = tf.browser.fromPixels(canvas).toFloat()
+
+      // resize tensor
+      const reshapedInput = tf
+        .image
+        .resizeBilinear(tensorInput, [224, 224])
+        .expandDims(0)
+
       // Normalize the image
-      input = input.sub(offset).div(offset)
+      const offset = tf.scalar(127.5)
+      const normalizedInput = reshapedInput.sub(offset).div(offset)
   
-      const global = input.expandDims(0)
-      const results = classificationModel.predict(global)
-      const ok = await results.buffer()
-      return ok.values;
+      // run the classifiaction
+      const results = classificationModel.predict(normalizedInput)
+
+      // get buffer from tensor to access values as TypedArray
+      const resultsData = await results.buffer()
+      return resultsData.values;
     }));
 
   const resize = () => {
@@ -249,6 +265,7 @@ const RockfishDemo = () => {
   const showProgress = downloadProgress !== 0 && downloadProgress !== 1
   const showSpinner = status === ML_STATUSES.WARMING_UP || status === ML_STATUSES.DETECTING
 
+  console.log('status', status)
   return (
     <div
       className="wrapper"
@@ -274,6 +291,7 @@ const RockfishDemo = () => {
         style={isImageReady ? {} : hidden}
         id="adjusted-image"
       />
+      <Boxes boxes={classifiedBoxes} />
       {isImageReady && <div className="overlay" />}
 
       <div className="control">
