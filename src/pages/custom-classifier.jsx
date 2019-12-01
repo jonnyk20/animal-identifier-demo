@@ -43,13 +43,11 @@ const RockfishDemo = () => {
 
 
   const classifyDetections = (boxes, classifications) => {
-    console.log('CLASSIFICATIONS', classifications)
     const classifiedBoxes = 
       boxes.map((box, i) => {
         const classificationLabelIndex = argMax(classifications[i]);
         const score = classifications[i][classificationLabelIndex];
         const label = classificationLabels[classificationLabelIndex];
-        console.log('BOX', box);
 
         return ({
           ...box,
@@ -58,6 +56,7 @@ const RockfishDemo = () => {
         })
       })
     setClassifiedBoxes(classifiedBoxes);
+    setStatus(ML_STATUSES.COMPLETE);
   }
 
   const cropDetections = async boxes => {
@@ -81,7 +80,7 @@ const RockfishDemo = () => {
       canvases.push(canvas);
     })
     const classifications = await classify(canvases);
-    setStatus(ML_STATUSES.COMPLETE);
+    setStatus(ML_STATUSES.CLASSIFYING);
     classifyDetections(boxes, classifications);
   }
 
@@ -163,7 +162,6 @@ const RockfishDemo = () => {
     try {
       const tfImg = tf.browser.fromPixels(img).toFloat()
       const expanded = tfImg.expandDims(0)
-      setStatus(ML_STATUSES.CLASSIFYING)
       const res = await detectionModel.executeAsync(expanded)
       const detection_boxes = res[2]
       // const arr = await detection_boxes.array()
@@ -264,8 +262,8 @@ const RockfishDemo = () => {
 
   const showProgress = downloadProgress !== 0 && downloadProgress !== 1
   const showSpinner = status === ML_STATUSES.WARMING_UP || status === ML_STATUSES.DETECTING
+  const isComplete = status === ML_STATUSES.COMPLETE
 
-  console.log('status', status)
   return (
     <div
       className="wrapper"
@@ -294,7 +292,7 @@ const RockfishDemo = () => {
       <Boxes boxes={classifiedBoxes} />
       {isImageReady && <div className="overlay" />}
 
-      <div className="control">
+      <div className="control" style={isComplete ? hidden : {}}>
           {status === ML_STATUSES.READY_FOR_DETECTION && isImageReady && (
             <button onClick={detect} className="control__button">
               Find Fish
