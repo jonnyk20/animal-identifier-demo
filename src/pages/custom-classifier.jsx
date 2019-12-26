@@ -4,7 +4,7 @@ import { getImageOrientation, adjustCanvas, argMax } from "../utils"
 import ProgressBar from "../components/ProgressBar"
 import LoadingSpinner from "../components/LoadingSpinner"
 import Boxes from "../components/Boxes"
-import sampleFishPhoto from "../images/sample-aquarium.jpeg"
+import sampleFishPhoto from "../images/rockfish.jpg"
 import { ML_STATUSES, DETECTION_MODEL_URL, CLASSIFICATION_MODEL_URL  } from '../constants'
 import "../styles.scss"
 
@@ -246,10 +246,20 @@ const RockfishDemo = () => {
     setResizedSrc(sampleFishPhoto)
   }
 
+  const clearImage = () => {
+    const canvas = rotationCanvasRef.current;
+    const context = canvas.getContext('2d');
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    setIsImageReady(false)
+  }
+
   const reset = e => {
     e.stopPropagation()
     setStatus(ML_STATUSES.READY_FOR_DETECTION)
     setResizedSrc(null)
+    setClassifiedBoxes([])
+    clearImage()
   }
 
   const triggerInput = () => {
@@ -292,10 +302,10 @@ const RockfishDemo = () => {
       <Boxes boxes={classifiedBoxes} />
       {isImageReady && <div className="overlay" />}
 
-      <div className="control" style={isComplete ? hidden : {}}>
+      <div className="control">
           {status === ML_STATUSES.READY_FOR_DETECTION && isImageReady && (
             <button onClick={detect} className="control__button">
-              Find Fish
+              Identify Rockfish
             </button>
           )}
           {showSpinner && <LoadingSpinner />}
@@ -315,8 +325,7 @@ const RockfishDemo = () => {
                 onClick={triggerInput}
                 className="control__button"
               >
-                Find Fish with <br />
-                Your Phone Camera
+                Upload a Photo
               </button>
               <div className="separator">- OR -</div>
               <button
@@ -324,13 +333,13 @@ const RockfishDemo = () => {
                 onClick={getSamplePhoto}
                 className="control__button"
               >
-                Use a Sample Photo
+                Use a Sample
               </button>
             </Fragment>
           )}
-          {status === ML_STATUSES.COMPLETE && error && <div>Failed to Find Fish <br /></div>}
+          {isComplete && error && <div>Failed to Find Fish <br /></div>}
           
-          {status === ML_STATUSES.COMPLETE && (
+          {isComplete && (
             <button onClick={reset} className="control__button">
               Reset
             </button>

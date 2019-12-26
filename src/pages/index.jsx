@@ -2,15 +2,10 @@ import React from "react"
 import { Link } from "gatsby"
 
 import Layout from "../components/layout"
-import Image from "../components/image"
-import SEO from "../components/seo"
+import Classifier from './custom-classifier';
 
 const IndexPage = () => (
-  <Layout>
-    <div>
-      <Link to="/custom-classifier/">Start</Link>
-    </div>
-  </Layout>
+  <Classifier />
 )
 
 export default IndexPage
