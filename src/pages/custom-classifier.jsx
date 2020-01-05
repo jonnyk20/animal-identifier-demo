@@ -5,10 +5,27 @@ import ProgressBar from "../components/ProgressBar"
 import LoadingSpinner from "../components/LoadingSpinner"
 import Boxes from "../components/Boxes"
 import sampleFishPhoto from "../images/rockfish.jpg"
-import { ML_STATUSES, DETECTION_MODEL_URL, CLASSIFICATION_MODEL_URL  } from '../constants'
+import {
+  ML_STATUSES,
+  DETECTION_MODEL_URL,
+  CLASSIFICATION_MODEL_URL,
+} from "../constants"
 import "../styles.scss"
 
-const classificationLabels = ["canary rockfish", "vermillion rockfish", "yelloweye rockfish"];
+const classificationLabels = [
+  "black",
+  "blue",
+  "brown",
+  "canary",
+  "china",
+  "copper",
+  "grass",
+  "quillback",
+  "tiger",
+  "vermillion",
+  "yelloweye",
+  "yellowtail",
+]
 
 const RockfishDemo = () => {
   const [modelsLoaded, setModelsLoaded] = useState(false)
@@ -38,32 +55,29 @@ const RockfishDemo = () => {
   const hiddenCanvasRef = useRef()
   const cropRef = useRef()
 
-  const formatScore = score => 
-    (score * 100).toFixed(2)
-
+  const formatScore = score => (score * 100).toFixed(2)
 
   const classifyDetections = (boxes, classifications) => {
-    const classifiedBoxes = 
-      boxes.map((box, i) => {
-        const classificationLabelIndex = argMax(classifications[i]);
-        const score = classifications[i][classificationLabelIndex];
-        const label = classificationLabels[classificationLabelIndex];
+    const classifiedBoxes = boxes.map((box, i) => {
+      const classificationLabelIndex = argMax(classifications[i])
+      const score = classifications[i][classificationLabelIndex]
+      const label = classificationLabels[classificationLabelIndex]
 
-        return ({
-          ...box,
-          label,
-          score: formatScore(score),
-        })
-      })
-    setClassifiedBoxes(classifiedBoxes);
-    setStatus(ML_STATUSES.COMPLETE);
+      return {
+        ...box,
+        label,
+        score: formatScore(score),
+      }
+    })
+    setClassifiedBoxes(classifiedBoxes)
+    setStatus(ML_STATUSES.COMPLETE)
   }
 
   const cropDetections = async boxes => {
-    const canvases = [];
+    const canvases = []
     boxes.forEach(box => {
       const { current: source } = rotationCanvasRef
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas")
       const { x, width: w, height: h } = source.getBoundingClientRect()
       const A = box.x // x
       const B = box.y // y
@@ -77,11 +91,11 @@ const RockfishDemo = () => {
       canvas.height = box.h // cropH
       canvas.width = box.w // cropW
       ctx.drawImage(source, A, B, C, D, E, F, G, H)
-      canvases.push(canvas);
+      canvases.push(canvas)
     })
-    const classifications = await classify(canvases);
-    setStatus(ML_STATUSES.CLASSIFYING);
-    classifyDetections(boxes, classifications);
+    const classifications = await classify(canvases)
+    setStatus(ML_STATUSES.CLASSIFYING)
+    classifyDetections(boxes, classifications)
   }
 
   const drawBoxes = boxes => {
@@ -142,7 +156,9 @@ const RockfishDemo = () => {
 
   const loadModels = async () => {
     try {
-      const detector = await tf.loadGraphModel(DETECTION_MODEL_URL, { onProgress: setDetectionDownloadProgress })
+      const detector = await tf.loadGraphModel(DETECTION_MODEL_URL, {
+        onProgress: setDetectionDownloadProgress,
+      })
       const classifier = await tf.loadGraphModel(CLASSIFICATION_MODEL_URL, {
         onProgress: setClassifiationDownloadProgress,
       })
@@ -189,27 +205,28 @@ const RockfishDemo = () => {
   }
 
   const classify = async canvases =>
-    Promise.all(canvases.map(async canvas => {
-      // convert element to tensor
-      const tensorInput = tf.browser.fromPixels(canvas).toFloat()
+    Promise.all(
+      canvases.map(async canvas => {
+        // convert element to tensor
+        const tensorInput = tf.browser.fromPixels(canvas).toFloat()
 
-      // resize tensor
-      const reshapedInput = tf
-        .image
-        .resizeBilinear(tensorInput, [224, 224])
-        .expandDims(0)
+        // resize tensor
+        const reshapedInput = tf.image
+          .resizeBilinear(tensorInput, [224, 224])
+          .expandDims(0)
 
-      // Normalize the image
-      const offset = tf.scalar(127.5)
-      const normalizedInput = reshapedInput.sub(offset).div(offset)
-  
-      // run the classifiaction
-      const results = classificationModel.predict(normalizedInput)
+        // Normalize the image
+        const offset = tf.scalar(127.5)
+        const normalizedInput = reshapedInput.sub(offset).div(offset)
 
-      // get buffer from tensor to access values as TypedArray
-      const resultsData = await results.buffer()
-      return resultsData.values;
-    }));
+        // run the classifiaction
+        const results = classificationModel.predict(normalizedInput)
+
+        // get buffer from tensor to access values as TypedArray
+        const resultsData = await results.buffer()
+        return resultsData.values
+      })
+    )
 
   const resize = () => {
     const { innerWidth: maxWidth } = window
@@ -247,10 +264,10 @@ const RockfishDemo = () => {
   }
 
   const clearImage = () => {
-    const canvas = rotationCanvasRef.current;
-    const context = canvas.getContext('2d');
+    const canvas = rotationCanvasRef.current
+    const context = canvas.getContext("2d")
 
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.clearRect(0, 0, canvas.width, canvas.height)
     setIsImageReady(false)
   }
 
@@ -271,14 +288,12 @@ const RockfishDemo = () => {
   }
 
   const showProgress = downloadProgress !== 0 && downloadProgress !== 1
-  const showSpinner = status === ML_STATUSES.WARMING_UP || status === ML_STATUSES.DETECTING
+  const showSpinner =
+    status === ML_STATUSES.WARMING_UP || status === ML_STATUSES.DETECTING
   const isComplete = status === ML_STATUSES.COMPLETE
 
   return (
-    <div
-      className="wrapper"
-      style={isImageReady ? { ...dimensions } : {}}
-    >
+    <div className="wrapper" style={isImageReady ? { ...dimensions } : {}}>
       <img
         id="hidden-upload-placeholder"
         src={hiddenSrc}
@@ -303,57 +318,57 @@ const RockfishDemo = () => {
       {isImageReady && <div className="overlay" />}
 
       <div className="control">
-          {status === ML_STATUSES.READY_FOR_DETECTION && isImageReady && (
-            <button onClick={detect} className="control__button">
-              Identify Rockfish
-            </button>
-          )}
-          {showSpinner && <LoadingSpinner />}
-          {status === ML_STATUSES.WARMING_UP && <div>Warming up...</div>}
-          {status === ML_STATUSES.DETECTING && <div>Detecting...</div>}
-          {!modelsLoaded && (
-            <button onClick={loadModels} className="control__button">
-              Load Model
-            </button>
-          )}
-          {showProgress && <ProgressBar progress={downloadProgress} />}
+        {status === ML_STATUSES.READY_FOR_DETECTION && isImageReady && (
+          <button onClick={detect} className="control__button">
+            Identify Rockfish
+          </button>
+        )}
+        {showSpinner && <LoadingSpinner />}
+        {status === ML_STATUSES.WARMING_UP && <div>Warming up...</div>}
+        {status === ML_STATUSES.DETECTING && <div>Detecting...</div>}
+        {!modelsLoaded && (
+          <button onClick={loadModels} className="control__button">
+            Load Model
+          </button>
+        )}
+        {showProgress && <ProgressBar progress={downloadProgress} />}
 
-          {!isImageReady && status === ML_STATUSES.READY_FOR_DETECTION && (
-            <Fragment>
-              <button
-                href="#"
-                onClick={triggerInput}
-                className="control__button"
-              >
-                Upload a Photo
-              </button>
-              <div className="separator">- OR -</div>
-              <button
-                href="#"
-                onClick={getSamplePhoto}
-                className="control__button"
-              >
-                Use a Sample
-              </button>
-            </Fragment>
-          )}
-          {isComplete && error && <div>Failed to Find Fish <br /></div>}
-          
-          {isComplete && (
-            <button onClick={reset} className="control__button">
-              Reset
+        {!isImageReady && status === ML_STATUSES.READY_FOR_DETECTION && (
+          <Fragment>
+            <button href="#" onClick={triggerInput} className="control__button">
+              Upload a Photo
             </button>
-          )}
+            <div className="separator">- OR -</div>
+            <button
+              href="#"
+              onClick={getSamplePhoto}
+              className="control__button"
+            >
+              Use a Sample
+            </button>
+          </Fragment>
+        )}
+        {isComplete && error && (
+          <div>
+            Failed to Find Fish <br />
+          </div>
+        )}
 
-          <input
-            type="file"
-            accept="image/*"
-            capture="camera"
-            onChange={handleChange}
-            ref={inputRef}
-            id="file-input"
-            className="control__input"
-          />
+        {isComplete && (
+          <button onClick={reset} className="control__button">
+            Reset
+          </button>
+        )}
+
+        <input
+          type="file"
+          accept="image/*"
+          capture="camera"
+          onChange={handleChange}
+          ref={inputRef}
+          id="file-input"
+          className="control__input"
+        />
       </div>
       <canvas className="cropped" ref={cropRef} style={hidden} />
     </div>
