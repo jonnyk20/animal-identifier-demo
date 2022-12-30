@@ -9,7 +9,7 @@
     "@tensorflow/tfjs": "^1.2.2",
     "@tensorflow/tfjs-converter": "^1.2.2",
     "@tensorflow/tfjs-node": "^1.2.3",
-    "gatsby": "^2.10.4",
+    "gatsby": "^2.32.13",
     "gatsby-image": "^2.2.3",
     "gatsby-plugin-manifest": "^2.2.0",
     "gatsby-plugin-offline": "^2.2.0",
